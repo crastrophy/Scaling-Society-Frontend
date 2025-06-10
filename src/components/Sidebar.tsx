@@ -3,6 +3,12 @@ import { SidebarNavItem } from "./SidebarNavItem";
 import { Home, BarChart, Users } from "lucide-react";
 import { useQuery } from "react-query";
 import axios from "axios";
+import { Button } from "./ui/button";
+import { Calendar } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { format } from "date-fns";
+import { DayPicker } from "react-day-picker";
+import "react-day-picker/dist/style.css";
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: Home },
@@ -14,8 +20,10 @@ export function Sidebar() {
   return (
     <aside className="bg-[#232533] min-h-screen w-[260px] flex flex-col px-8 py-10">
       <div className="mb-12">
-        <div className="text-3xl font-bold text-white leading-tight">Welcome back,</div>
-        <div className="text-3xl font-bold text-white mt-2">Daniel</div>
+        <div className="text-3xl font-bold text-white leading-tight">
+          Welcome back,<br />
+          Daniel
+        </div>
       </div>
       <nav className="flex flex-col gap-2">
         {navItems.map(({ to, label, icon }) => (
@@ -71,7 +79,57 @@ export function MetricGrid({ children }: MetricGridProps) {
   );
 }
 
+interface DashboardMetrics {
+  revenue: number;
+  showRate: number;
+  // Add other fields as needed
+}
+
 function mapSheetRowsToMetrics(rows: any[]): DashboardMetrics {
-  // Transform rows into { revenue, showRate, ... }
-  return { ... };
+  // TODO: Implement mapping logic
+  return {
+    revenue: 0,
+    showRate: 0,
+    // Add other fields as needed
+  };
+}
+
+export function DateRangePickerButton() {
+  const [open, setOpen] = useState(false);
+  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Format the range for display
+  const display =
+    dateRange.from && dateRange.to
+      ? `${format(dateRange.from, "MMM d")} – ${format(dateRange.to, "MMM d, yyyy")}`
+      : "Select date range";
+
+  return (
+    <div className="relative" ref={ref}>
+      <Button
+        variant="white"
+        size="sm"
+        className="flex items-center gap-2"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <Calendar className="w-4 h-4 text-[#BDBDBD] mr-2" />
+        {display}
+        <span className="text-[#BDBDBD]">⌄</span>
+      </Button>
+      {open && (
+        <div className="absolute left-0 mt-2 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-4">
+          <DayPicker
+            mode="range"
+            selected={dateRange}
+            onSelect={(selected) => {
+              setDateRange(selected || {});
+              if (selected?.from && selected?.to) setOpen(false);
+            }}
+            numberOfMonths={2}
+          />
+        </div>
+      )}
+    </div>
+  );
 } 

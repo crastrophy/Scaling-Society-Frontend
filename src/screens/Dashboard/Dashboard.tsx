@@ -31,6 +31,7 @@ import { GaugeChartCard } from '../../components/GaugeChartCard';
 import { Tile } from '../../components/Tile';
 import { colors, spacing, type } from '../../theme';
 import { Button } from "../../components/ui/button";
+import { DateRangePickerButton } from "../../components/DateRangePickerButton";
 
 import { 
   mockCallData, 
@@ -97,10 +98,7 @@ export const Dashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   // Date range state
-  const [dateRange, setDateRange] = useState({
-    start: format(new Date(), 'yyyy-MM-01'),
-    end: format(new Date(), 'yyyy-MM-dd'),
-  });
+  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
 
   const metrics = calculateMetrics(mockCallData);
   const leadSourceData = getLeadSourceData(mockCallData);
@@ -165,11 +163,11 @@ export const Dashboard: React.FC = () => {
       <div className="max-w-7xl mx-auto space-y-10 px-0">
         {/* Date Picker */}
         <div className="flex justify-start items-center ml-0">
-          <Button variant="secondary" size="sm" className="mb-4 flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-[#BDBDBD] mr-2" />
-            May 1 – May 31, 2025
-            <span className="text-[#BDBDBD]">⌄</span>
-          </Button>
+          <DateRangePickerButton
+            value={dateRange}
+            onChange={(range) => setDateRange(range)}
+            className="mb-4"
+          />
         </div>
         <div className="space-y-10">
           {/* Key Metrics Section */}

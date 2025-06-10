@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, Legend } from 'recharts';
 import { Calendar } from 'lucide-react';
 import { Button } from "../components/ui/button";
+import { DateRangePickerButton } from "../components/DateRangePickerButton";
 
 const mockCloserData = [
   { name: 'Alex Brown', calls: 35, closes: 10, closeRate: 28.6, revenue: 5000, commission: 500 },
@@ -32,10 +33,7 @@ const lineChartData = [
 ];
 
 export const CloserSales: React.FC = () => {
-  const [dateRange, setDateRange] = useState({
-    start: format(new Date(), 'yyyy-MM-01'),
-    end: format(new Date(), 'yyyy-MM-dd'),
-  });
+  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -47,11 +45,10 @@ export const CloserSales: React.FC = () => {
       <div className="space-y-10">
         {/* Date Picker */}
         <div className="flex justify-start items-center ml-0 mb-4">
-          <Button variant="secondary" size="sm" className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-[#BDBDBD] mr-2" />
-            May 1 – May 31, 2025
-            <span className="text-[#BDBDBD]">⌄</span>
-          </Button>
+          <DateRangePickerButton
+            value={dateRange}
+            onChange={(range) => setDateRange(range)}
+          />
         </div>
 
         {/* KPIs Section */}

@@ -12,6 +12,7 @@ import {
   SDRChartData,
   calculateSDRChartData
 } from '../data/googleSheetService';
+import { useAuth } from '../auth/useAuth';
 
 const PIE_COLORS = ['#FF0000', '#69C9D0', '#E1306C', '#828282'];
 
@@ -21,11 +22,14 @@ export const SDRSales: React.FC = () => {
   const [rawData, setRawData] = useState<GoogleSheetData | null>(null);
   const [sdrMetrics, setSdrMetrics] = useState<SDRMetricData[]>([]);
   const [chartData, setChartData] = useState<SDRChartData | null>(null);
+  const { getAuthToken } = useAuth();
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const data = await fetchData();
+      const token = await getAuthToken();
+      if (!token) throw new Error("No auth token found");
+      const data = await fetchData(token);
       setRawData(data);
     } catch (error) {
       console.error("Failed to fetch SDR sales data", error);

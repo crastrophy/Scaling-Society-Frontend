@@ -1,8 +1,14 @@
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
-import { Dashboard } from "./screens/Dashboard/Dashboard";
-import SDRSales from "./screens/SDRSales";
-import CloserSales from "./screens/CloserSales";
-import { Sidebar } from "./components/Sidebar";
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { AuthProvider } from './auth/AuthProvider';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { AdminProtectedRoute } from './components/AdminProtectedRoute';
+import { Login } from './screens/Login/Login';
+import Invite from './screens/Admin/Invite';
+import { Dashboard } from './screens/Dashboard/Dashboard';
+import { CloserSales } from './screens/CloserSales';
+import { SDRSales } from './screens/SDRSales';
+import { Sidebar } from './components/Sidebar';
 
 function AppLayout() {
   return (
@@ -18,14 +24,22 @@ function AppLayout() {
 export function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route element={<AppLayout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/sdr-sales" element={<SDRSales />} />
-          <Route path="/closer-sales" element={<CloserSales />} />
-          <Route path="*" element={<Navigate to="/dashboard" />} />
-        </Route>
-      </Routes>
+      <AuthProvider>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route element={<ProtectedRoute />}>
+            <Route element={<AppLayout />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/sdr-sales" element={<SDRSales />} />
+              <Route path="/closer-sales" element={<CloserSales />} />
+              <Route path="*" element={<Navigate to="/dashboard" />} />
+            </Route>
+            <Route element={<AdminProtectedRoute />}>
+              <Route path="/admin/invite" element={<Invite />} />
+            </Route>
+          </Route>
+        </Routes>
+      </AuthProvider>
     </BrowserRouter>
   );
 } 

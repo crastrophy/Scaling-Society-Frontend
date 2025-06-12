@@ -98,8 +98,12 @@ export interface ChartData {
 
 const revenueKey = "Revenue Generated\nThe total value of the contract (ex: 3000, 4000)\nYour answer";
 
-export const fetchData = async (): Promise<GoogleSheetData> => {
-  const response = await fetch('http://localhost:5000/data');
+export const fetchData = async (token: string): Promise<GoogleSheetData> => {
+  const response = await fetch('http://localhost:5000/data', {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
   if (!response.ok) {
     throw new Error('Network response was not ok');
   }

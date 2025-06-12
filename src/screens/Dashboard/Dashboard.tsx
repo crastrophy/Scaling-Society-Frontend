@@ -49,6 +49,7 @@ import {
   DetailedTableRowData,
   calculateTableData
 } from '../../data/googleSheetService';
+import { useAuth } from '../../auth/useAuth';
 
 // Example pie chart data
 const pieData = [
@@ -101,6 +102,7 @@ export const Dashboard: React.FC = () => {
   const [kpiData, setKpiData] = useState<KpiData | null>(null);
   const [chartData, setChartData] = useState<ChartData | null>(null);
   const [tableData, setTableData] = useState<DetailedTableRowData[] | null>(null);
+  const { getAuthToken } = useAuth();
 
   // Date range state
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
@@ -112,7 +114,9 @@ export const Dashboard: React.FC = () => {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const data = await fetchData();
+      const token = await getAuthToken();
+      if (!token) throw new Error("No auth token found");
+      const data = await fetchData(token);
       setRawData(data);
     } catch (error) {
       console.error("Failed to fetch dashboard data", error);

@@ -12,6 +12,7 @@ import {
   CloserChartData,
   calculateCloserChartData
 } from '../data/googleSheetService';
+import { useAuth } from '../auth/useAuth';
 
 const PIE_COLORS = ['#22C55E', '#EF4444', '#F2C94C', '#3B82F6', '#9CA3AF', '#F97316'];
 
@@ -21,11 +22,14 @@ export const CloserSales: React.FC = () => {
   const [rawData, setRawData] = useState<GoogleSheetData | null>(null);
   const [closerMetrics, setCloserMetrics] = useState<CloserMetricData[]>([]);
   const [chartData, setChartData] = useState<CloserChartData | null>(null);
+  const { getAuthToken } = useAuth();
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const data = await fetchData();
+      const token = await getAuthToken();
+      if (!token) throw new Error("No auth token found");
+      const data = await fetchData(token);
       setRawData(data);
     } catch (error) {
       console.error("Failed to fetch closer sales data", error);

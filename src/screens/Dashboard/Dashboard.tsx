@@ -39,15 +39,16 @@ import {
   getLeadSourceData, 
   getCommissionData 
 } from '../../data/mockData';
-
-const kpis = [
-  { label: 'Total Revenue', value: '$120,000', change: 8 },
-  { label: 'Cash Collected', value: '$95,000', change: -4 },
-  { label: 'Show Rate', value: '76%', change: 2 },
-  { label: 'Close Rate', value: '44%', change: 1 },
-  { label: 'Closer Commission', value: '$9,500', change: null },
-  { label: 'Setter Commission', value: '$4,750', change: null },
-];
+import { 
+  KpiData, 
+  GoogleSheetData, 
+  fetchData, 
+  calculateKpis, 
+  ChartData, 
+  calculateChartData,
+  DetailedTableRowData,
+  calculateTableData
+} from '../../data/googleSheetService';
 
 // Example pie chart data
 const pieData = [
@@ -56,7 +57,7 @@ const pieData = [
   { source: 'YouTube', count: 20 },
   { source: 'Other', count: 10 },
 ];
-const PIE_COLORS = ['#E1306C', '#69C9D0', '#FF0000', '#828282'];
+const PIE_COLORS = ['#FF0000', '#69C9D0', '#E1306C', '#828282'];
 
 // Example bar chart data
 const barData = [
@@ -95,7 +96,11 @@ const lineChartData = [
 
 export const Dashboard: React.FC = () => {
   const [lastUpdated, setLastUpdated] = useState(new Date());
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [rawData, setRawData] = useState<GoogleSheetData | null>(null);
+  const [kpiData, setKpiData] = useState<KpiData | null>(null);
+  const [chartData, setChartData] = useState<ChartData | null>(null);
+  const [tableData, setTableData] = useState<DetailedTableRowData[] | null>(null);
 
   // Date range state
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
@@ -104,12 +109,36 @@ export const Dashboard: React.FC = () => {
   const leadSourceData = getLeadSourceData(mockCallData);
   const commissionData = getCommissionData(mockCallData);
 
-  const handleRefresh = async () => {
+  const loadData = async () => {
     setIsLoading(true);
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setLastUpdated(new Date());
-    setIsLoading(false);
+    try {
+      const data = await fetchData();
+      setRawData(data);
+    } catch (error) {
+      console.error("Failed to fetch dashboard data", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    if (rawData) {
+      const calculatedKpis = calculateKpis(rawData, dateRange);
+      setKpiData(calculatedKpis);
+      const calculatedCharts = calculateChartData(rawData, dateRange);
+      setChartData(calculatedCharts);
+      const calculatedTableData = calculateTableData(rawData, dateRange);
+      setTableData(calculatedTableData);
+      setLastUpdated(new Date());
+    }
+  }, [rawData, dateRange]);
+
+  const handleRefresh = async () => {
+    await loadData();
   };
 
   // Handler for date changes
@@ -118,45 +147,6 @@ export const Dashboard: React.FC = () => {
     setDateRange((prev) => ({ ...prev, [name]: value }));
     // Optionally, trigger data refresh here
   };
-
-  const metricCards = [
-    {
-      icon: <DollarSign className="w-8 h-8 text-[#2F80ED]" />, // Primary Accent Blue
-      value: `$${metrics.totalCashCollected.toLocaleString()}`,
-      label: "Cash Collected",
-      change: "+10% from yesterday",
-    },
-    {
-      icon: <DollarSign className="w-8 h-8 text-[#56CCF2]" />, // Secondary Blue
-      value: `$${metrics.totalRevenue.toLocaleString()}`,
-      label: "Revenue Generated",
-      change: "+8% from yesterday",
-    },
-    {
-      icon: <PhoneIncoming className="w-8 h-8 text-[#6FCF97]" />, // Green
-      value: metrics.callsDue,
-      label: "Calls Due",
-      change: "+8% from yesterday",
-    },
-    {
-      icon: <PhoneCall className="w-8 h-8 text-[#F2C94C]" />, // Yellow
-      value: metrics.callsTaken,
-      label: "Calls Taken",
-      change: "+2% from yesterday",
-    },
-    {
-      icon: <Users className="w-8 h-8 text-[#E1306C]" />, // Instagram Pink
-      value: metrics.callsClosed,
-      label: "Calls Closed",
-      change: "+3% from yesterday",
-    },
-    {
-      icon: <TrendingUp className="w-8 h-8 text-[#2F80ED]" />, // Primary Accent Blue
-      value: `${metrics.showRate.toFixed(1)}%`,
-      label: "Show Rate",
-      change: "+2.3% from yesterday",
-    },
-  ];
 
   return (
     <div className="min-h-screen bg-[#21222D] px-0 py-4">
@@ -177,31 +167,31 @@ export const Dashboard: React.FC = () => {
             <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 ${spacing.tileGap}`}>
               <Tile>
                 <BarChart2 className="text-[#FBBF24] w-8 h-8 mb-3" />
-                <p className={`${type.stat}`}>$38,400.0</p>
+                <p className={`${type.stat}`}>{isLoading || !kpiData ? '...' : `$${kpiData.cashCollected.toLocaleString()}`}</p>
                 <p className={`${type.label} mt-1`}>Cash Collected</p>
                 <p className="text-xs mt-1 text-[#FBBF24]">+10% from yesterday</p>
               </Tile>
               <Tile>
                 <DollarSign className="text-[#67E8F9] w-8 h-8 mb-3" />
-                <p className={`${type.stat}`}>$125,400</p>
+                <p className={`${type.stat}`}>{isLoading || !kpiData ? '...' : `$${kpiData.revenueGenerated.toLocaleString()}`}</p>
                 <p className={`${type.label} mt-1`}>Revenue Generated</p>
                 <p className="text-xs mt-1 text-[#67E8F9]">+8% from yesterday</p>
               </Tile>
               <Tile>
                 <PhoneIncoming className="text-[#34D399] w-8 h-8 mb-3" />
-                <p className={`${type.stat}`}>84</p>
+                <p className={`${type.stat}`}>{isLoading || !kpiData ? '...' : kpiData.callsDue}</p>
                 <p className={`${type.label} mt-1`}>Calls Due</p>
                 <p className="text-xs mt-1 text-[#34D399]">+8% from yesterday</p>
               </Tile>
               <Tile>
                 <Briefcase className="text-[#F9A8D4] w-8 h-8 mb-3" />
-                <p className={`${type.stat}`}>67</p>
+                <p className={`${type.stat}`}>{isLoading || !kpiData ? '...' : kpiData.callsTaken}</p>
                 <p className={`${type.label} mt-1`}>Calls Taken</p>
                 <p className="text-xs mt-1 text-[#F9A8D4]">+2% from yesterday</p>
               </Tile>
               <Tile>
                 <UserPlus className="text-[#60A5FA] w-8 h-8 mb-3" />
-                <p className={`${type.stat}`}>26</p>
+                <p className={`${type.stat}`}>{isLoading || !kpiData ? '...' : kpiData.callsClosed}</p>
                 <p className={`${type.label} mt-1`}>Calls Closed</p>
                 <p className="text-xs mt-1 text-[#60A5FA]">+3% from yesterday</p>
               </Tile>
@@ -212,8 +202,17 @@ export const Dashboard: React.FC = () => {
             <h2 className={`${type.h2} ${spacing.titleSpacing}`}>Gauges</h2>
             <div className={`flex justify-center mt-10 ${spacing.tileGap}`}>
               <div className={`grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl w-full ${spacing.tileGap}`}>
-                <GaugeChartCard value={metrics.showRate / 100} valueLabel={`${metrics.showRate.toFixed(1)}%`} label="Show Rate" gradientFrom="#8B5CF6" gradientTo="#4F46E5" />
-                <GaugeChartCard value={metrics.closeRate / 100} valueLabel={`${metrics.closeRate.toFixed(1)}%`} label="Close Rate" gradientFrom="#34D399" gradientTo="#10B981" />
+                {isLoading || !kpiData ? (
+                  <>
+                    <GaugeChartCard value={0} valueLabel={`...%`} label="Show Rate" gradientFrom="#8B5CF6" gradientTo="#4F46E5" />
+                    <GaugeChartCard value={0} valueLabel={`...%`} label="Close Rate" gradientFrom="#34D399" gradientTo="#10B981" />
+                  </>
+                ) : (
+                  <>
+                    <GaugeChartCard value={kpiData.showRate / 100} valueLabel={`${kpiData.showRate.toFixed(1)}%`} label="Show Rate" gradientFrom="#8B5CF6" gradientTo="#4F46E5" />
+                    <GaugeChartCard value={kpiData.closeRate / 100} valueLabel={`${kpiData.closeRate.toFixed(1)}%`} label="Close Rate" gradientFrom="#34D399" gradientTo="#10B981" />
+                  </>
+                )}
               </div>
             </div>
           </Tile>
@@ -225,41 +224,47 @@ export const Dashboard: React.FC = () => {
               <Tile>
                 <h3 className={`${type.h3} ${spacing.titleSpacing}`}>Revenue by Closer <Info className="w-4 h-4 text-[#BDBDBD] ml-2 cursor-pointer" /></h3>
                 <ResponsiveContainer width="100%" height={160}>
-                  <RechartsBarChart data={barChartData}>
-                    <CartesianGrid stroke="#232533" vertical={false} />
-                    <XAxis dataKey="closer" stroke="#BDBDBD" tick={{ fill: '#F3F4F6', fontSize: 14 }} axisLine={{ stroke: '#232533' }} />
-                    <YAxis stroke="#BDBDBD" tick={{ fill: '#F3F4F6', fontSize: 14 }} axisLine={{ stroke: '#232533' }} />
-                    <Tooltip contentStyle={{ background: '#171821', border: '1px solid #232533', color: '#F3F4F6', fontSize: 14 }} />
-                    <Bar dataKey="revenue" fill="#2F80ED" radius={[8, 8, 0, 0]} barSize={32} />
-                  </RechartsBarChart>
+                  {isLoading || !chartData ? <div className="flex items-center justify-center h-full">Loading...</div> : (
+                    <RechartsBarChart data={chartData.revenueByCloser}>
+                      <CartesianGrid stroke="#232533" vertical={false} />
+                      <XAxis dataKey="closer" stroke="#BDBDBD" tick={{ fill: '#F3F4F6', fontSize: 14 }} axisLine={{ stroke: '#232533' }} />
+                      <YAxis stroke="#BDBDBD" tick={{ fill: '#F3F4F6', fontSize: 14 }} axisLine={{ stroke: '#232533' }} />
+                      <Tooltip contentStyle={{ background: '#171821', border: '1px solid #232533', color: '#F3F4F6', fontSize: 14 }} />
+                      <Bar dataKey="revenue" fill="#2F80ED" radius={[8, 8, 0, 0]} barSize={32} />
+                    </RechartsBarChart>
+                  )}
                 </ResponsiveContainer>
               </Tile>
               {/* Pie Chart Card */}
               <Tile>
                 <h3 className={`${type.h3} ${spacing.titleSpacing}`}>Lead Source Breakdown <Info className="w-4 h-4 text-[#BDBDBD] ml-2 cursor-pointer" /></h3>
                 <ResponsiveContainer width="100%" height={160}>
-                  <PieChart>
-                    <Pie data={pieChartData} dataKey="value" nameKey="source" cx="50%" cy="50%" outerRadius={60} labelLine={false}>
-                      {pieChartData.map((entry, i) => (
-                        <Cell key={`cell-${i}`} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={{ background: '#171821', border: '1px solid #232533', color: '#F3F4F6', fontSize: 14 }} />
-                    <Legend iconType="circle" formatter={(value) => <span style={{ color: '#F3F4F6', fontSize: 14 }}>{value}</span>} />
-                  </PieChart>
+                  {isLoading || !chartData ? <div className="flex items-center justify-center h-full">Loading...</div> : (
+                    <PieChart>
+                      <Pie data={chartData.leadSourceBreakdown} dataKey="value" nameKey="source" cx="50%" cy="50%" outerRadius={60} labelLine={false}>
+                        {chartData.leadSourceBreakdown.map((entry, i) => (
+                          <Cell key={`cell-${i}`} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={{ background: '#171821', border: '1px solid #232533', color: '#F3F4F6', fontSize: 14 }} />
+                      <Legend iconType="circle" formatter={(value) => <span style={{ color: '#F3F4F6', fontSize: 14 }}>{value}</span>} />
+                    </PieChart>
+                  )}
                 </ResponsiveContainer>
               </Tile>
               {/* Line Chart Card */}
               <Tile>
                 <h3 className={`${type.h3} ${spacing.titleSpacing}`}>Show Rate Trend <Info className="w-4 h-4 text-[#BDBDBD] ml-2 cursor-pointer" /></h3>
                 <ResponsiveContainer width="100%" height={160}>
-                  <LineChart data={lineChartData}>
-                    <CartesianGrid stroke="#232533" vertical={false} />
-                    <XAxis dataKey="date" stroke="#BDBDBD" tick={{ fill: '#F3F4F6', fontSize: 14 }} axisLine={{ stroke: '#232533' }} />
-                    <YAxis stroke="#BDBDBD" tick={{ fill: '#F3F4F6', fontSize: 14 }} axisLine={{ stroke: '#232533' }} />
-                    <Tooltip contentStyle={{ background: '#171821', border: '1px solid #232533', color: '#F3F4F6', fontSize: 14 }} />
-                    <Line type="monotone" dataKey="showRate" stroke="#56CCF2" strokeWidth={3} dot={{ r: 4, fill: '#56CCF2' }} />
-                  </LineChart>
+                  {isLoading || !chartData ? <div className="flex items-center justify-center h-full">Loading...</div> : (
+                    <LineChart data={chartData.showRateTrend}>
+                      <CartesianGrid stroke="#232533" vertical={false} />
+                      <XAxis dataKey="date" stroke="#BDBDBD" tick={{ fill: '#F3F4F6', fontSize: 14 }} axisLine={{ stroke: '#232533' }} />
+                      <YAxis stroke="#BDBDBD" tick={{ fill: '#F3F4F6', fontSize: 14 }} axisLine={{ stroke: '#232533' }} domain={[0, 100]} />
+                      <Tooltip contentStyle={{ background: '#171821', border: '1px solid #232533', color: '#F3F4F6', fontSize: 14 }} />
+                      <Line type="monotone" dataKey="showRate" stroke="#56CCF2" strokeWidth={3} dot={{ r: 4, fill: '#56CCF2' }} />
+                    </LineChart>
+                  )}
                 </ResponsiveContainer>
               </Tile>
             </div>
@@ -271,31 +276,37 @@ export const Dashboard: React.FC = () => {
               <table className="min-w-full text-sm">
                 <thead className="bg-[#2A2A32] text-white font-bold text-sm tracking-wide sticky top-0 z-10">
                   <tr>
-                    <th className="text-left px-4 py-4">Lead Name</th>
+                    <th className="text-left px-4 py-4">Prospect</th>
                     <th className="text-left px-4 py-4">Source</th>
-                    <th className="text-center px-4 py-4">Qualified?</th>
-                    <th className="text-center px-4 py-4">Showed Up?</th>
-                    <th className="text-left px-4 py-4">SDR</th>
+                    <th className="text-left px-4 py-4">Date Call Taken</th>
+                    <th className="text-left px-4 py-4">Setter</th>
                     <th className="text-left px-4 py-4">Closer</th>
-                    <th className="text-left px-4 py-4">Commission</th>
+                    <th className="text-left px-4 py-4">Call Outcome</th>
+                    <th className="text-left px-4 py-4">Cash Collected</th>
+                    <th className="text-left px-4 py-4">Show-Rate % (Setter)</th>
+                    <th className="text-left px-4 py-4">Close-Rate % (Closer)</th>
+                    <th className="text-left px-4 py-4">Avg Deal Size (Closer)</th>
                   </tr>
                 </thead>
                 <tbody className="text-[#F3F4F6]">
-                  {tableRows.map((row, i) => (
-                    <tr key={i} className={i % 2 === 0 ? 'bg-[#1E1E24]' : 'bg-[#23232D]'}>
-                      <td className="px-4 py-4 whitespace-nowrap">{row.name}</td>
-                      <td className="px-4 py-4 whitespace-nowrap">{row.source}</td>
-                      <td className="px-4 py-4 whitespace-nowrap text-center">
-                        {row.qualified === 'Yes' ? <Check className="w-4 h-4 text-[#22C55E] mx-auto" /> : <X className="w-4 h-4 text-[#EF4444] mx-auto" />}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-center">
-                        {row.showedUp === 'Yes' ? <Check className="w-4 h-4 text-[#22C55E] mx-auto" /> : <X className="w-4 h-4 text-[#EF4444] mx-auto" />}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">{row.sdr}</td>
-                      <td className="px-4 py-4 whitespace-nowrap">{row.closer}</td>
-                      <td className="px-4 py-4 whitespace-nowrap">{row.commission}</td>
-                    </tr>
-                  ))}
+                  {isLoading || !tableData ? (
+                    <tr><td colSpan={10} className="text-center py-4">Loading...</td></tr>
+                  ) : (
+                    tableData.map((row, i) => (
+                      <tr key={i} className={i % 2 === 0 ? 'bg-[#1E1E24]' : 'bg-[#23232D]'}>
+                        <td className="px-4 py-4 whitespace-nowrap">{row.prospect}</td>
+                        <td className="px-4 py-4 whitespace-nowrap">{row.source}</td>
+                        <td className="px-4 py-4 whitespace-nowrap">{row.dateCallTaken}</td>
+                        <td className="px-4 py-4 whitespace-nowrap">{row.setter}</td>
+                        <td className="px-4 py-4 whitespace-nowrap">{row.closer}</td>
+                        <td className="px-4 py-4 whitespace-nowrap">{row.callOutcome}</td>
+                        <td className="px-4 py-4 whitespace-nowrap">{row.cashCollected}</td>
+                        <td className="px-4 py-4 whitespace-nowrap">{row.setterShowRate}</td>
+                        <td className="px-4 py-4 whitespace-nowrap">{row.closerCloseRate}</td>
+                        <td className="px-4 py-4 whitespace-nowrap">{row.avgDealSize}</td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

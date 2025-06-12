@@ -1,39 +1,52 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, Legend } from 'recharts';
 import { Calendar } from 'lucide-react';
 import { Button } from "../components/ui/button";
 import { DateRangePickerButton } from "../components/DateRangePickerButton";
+import {
+  GoogleSheetData,
+  fetchData,
+  CloserMetricData,
+  calculateCloserMetrics,
+  CloserChartData,
+  calculateCloserChartData
+} from '../data/googleSheetService';
 
-const mockCloserData = [
-  { name: 'Alex Brown', calls: 35, closes: 10, closeRate: 28.6, revenue: 5000, commission: 500 },
-  { name: 'Sam Green', calls: 40, closes: 12, closeRate: 30, revenue: 6000, commission: 600 },
-];
-
-const barChartData = [
-  { closer: 'Alex', revenue: 5000 },
-  { closer: 'Sam', revenue: 6000 },
-  { closer: 'Jamie', revenue: 4000 },
-  { closer: 'Taylor', revenue: 7000 },
-];
-
-const pieChartData = [
-  { source: 'Closed', value: 60 },
-  { source: 'Lost', value: 25 },
-  { source: 'Pending', value: 15 },
-];
-
-const PIE_COLORS = ['#22C55E', '#EF4444', '#F2C94C'];
-
-const lineChartData = [
-  { date: 'Week 1', closeRate: 30 },
-  { date: 'Week 2', closeRate: 35 },
-  { date: 'Week 3', closeRate: 32 },
-  { date: 'Week 4', closeRate: 38 },
-];
+const PIE_COLORS = ['#22C55E', '#EF4444', '#F2C94C', '#3B82F6', '#9CA3AF', '#F97316'];
 
 export const CloserSales: React.FC = () => {
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [rawData, setRawData] = useState<GoogleSheetData | null>(null);
+  const [closerMetrics, setCloserMetrics] = useState<CloserMetricData[]>([]);
+  const [chartData, setChartData] = useState<CloserChartData | null>(null);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const data = await fetchData();
+      setRawData(data);
+    } catch (error) {
+      console.error("Failed to fetch closer sales data", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    if (rawData) {
+      const metrics = calculateCloserMetrics(rawData, dateRange);
+      setCloserMetrics(metrics);
+      const charts = calculateCloserChartData(rawData, dateRange);
+      setChartData(charts);
+    }
+  }, [rawData, dateRange]);
+
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -54,14 +67,14 @@ export const CloserSales: React.FC = () => {
         {/* KPIs Section */}
         <h2 className="text-[#F3F4F6] text-lg font-semibold mb-2">Key Metrics</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {mockCloserData.map((closer, idx) => (
+          {isLoading ? <p className="text-white col-span-full">Loading...</p> : closerMetrics.map((closer, idx) => (
             <div key={idx} className="bg-[#171821] rounded-lg shadow-sm p-6 flex flex-col gap-2">
               <div className="text-[#F3F4F6] text-lg font-bold">{closer.name}</div>
               <div className="text-[#F3F4F6]">Calls: <span className="font-semibold">{closer.calls}</span></div>
               <div className="text-[#F3F4F6]">Closes: <span className="font-semibold">{closer.closes}</span></div>
-              <div className="text-[#F3F4F6]">Close Rate: <span className="font-semibold">{closer.closeRate}%</span></div>
-              <div className="text-[#F3F4F6]">Revenue: <span className="font-semibold">${closer.revenue}</span></div>
-              <div className="text-green-400 font-semibold">Commission: ${closer.commission}</div>
+              <div className="text-[#F3F4F6]">Close Rate: <span className="font-semibold">{closer.closeRate.toFixed(1)}%</span></div>
+              <div className="text-[#F3F4F6]">Revenue: <span className="font-semibold">${closer.revenue.toLocaleString()}</span></div>
+              <div className="text-green-400 font-semibold">Commission: ${closer.commission.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
             </div>
           ))}
         </div>
@@ -73,41 +86,47 @@ export const CloserSales: React.FC = () => {
           <div className="bg-[#171821] rounded-lg shadow-sm p-6 flex flex-col">
             <h3 className="text-[#F3F4F6] font-medium mb-2">Revenue by Closer</h3>
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={barChartData}>
-                <CartesianGrid stroke="#232533" vertical={false} />
-                <XAxis dataKey="closer" stroke="#BDBDBD" tick={{ fill: '#F3F4F6', fontSize: 14 }} axisLine={{ stroke: '#232533' }} />
-                <YAxis stroke="#BDBDBD" tick={{ fill: '#F3F4F6', fontSize: 14 }} axisLine={{ stroke: '#232533' }} />
-                <Tooltip contentStyle={{ background: '#171821', border: '1px solid #232533', color: '#F3F4F6', fontSize: 14 }} />
-                <Bar dataKey="revenue" fill="#2F80ED" radius={[8, 8, 0, 0]} barSize={32} />
-              </BarChart>
+              {isLoading || !chartData ? <div className="text-white flex items-center justify-center h-full">Loading...</div> : (
+                <BarChart data={chartData.revenueByCloser}>
+                  <CartesianGrid stroke="#232533" vertical={false} />
+                  <XAxis dataKey="closer" stroke="#BDBDBD" tick={{ fill: '#F3F4F6', fontSize: 14 }} axisLine={{ stroke: '#232533' }} />
+                  <YAxis stroke="#BDBDBD" tick={{ fill: '#F3F4F6', fontSize: 14 }} axisLine={{ stroke: '#232533' }} />
+                  <Tooltip contentStyle={{ background: '#171821', border: '1px solid #232533', color: '#F3F4F6', fontSize: 14 }} />
+                  <Bar dataKey="revenue" fill="#2F80ED" radius={[8, 8, 0, 0]} barSize={32} />
+                </BarChart>
+              )}
             </ResponsiveContainer>
           </div>
           {/* Pie Chart Card */}
           <div className="bg-[#171821] rounded-lg shadow-sm p-6 flex flex-col">
             <h3 className="text-[#F3F4F6] font-medium mb-2">Deal Status Breakdown</h3>
             <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie data={pieChartData} dataKey="value" nameKey="source" cx="50%" cy="50%" outerRadius={70} labelLine={false}>
-                  {pieChartData.map((entry, i) => (
-                    <Cell key={`cell-${i}`} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={{ background: '#171821', border: '1px solid #232533', color: '#F3F4F6', fontSize: 14 }} />
-                <Legend iconType="circle" formatter={(value) => <span style={{ color: '#F3F4F6', fontSize: 14 }}>{value}</span>} />
-              </PieChart>
+              {isLoading || !chartData ? <div className="text-white flex items-center justify-center h-full">Loading...</div> : (
+                <PieChart>
+                  <Pie data={chartData.dealStatusBreakdown} dataKey="value" nameKey="source" cx="50%" cy="50%" outerRadius={70} labelLine={false}>
+                    {chartData.dealStatusBreakdown.map((entry, i) => (
+                      <Cell key={`cell-${i}`} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ background: '#171821', border: '1px solid #232533', color: '#F3F4F6', fontSize: 14 }} />
+                  <Legend iconType="circle" formatter={(value) => <span style={{ color: '#F3F4F6', fontSize: 14 }}>{value}</span>} />
+                </PieChart>
+              )}
             </ResponsiveContainer>
           </div>
           {/* Line Chart Card */}
           <div className="bg-[#171821] rounded-lg shadow-sm p-6 flex flex-col">
             <h3 className="text-[#F3F4F6] font-medium mb-2">Close Rate Trend</h3>
             <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={lineChartData}>
-                <CartesianGrid stroke="#232533" vertical={false} />
-                <XAxis dataKey="date" stroke="#BDBDBD" tick={{ fill: '#F3F4F6', fontSize: 14 }} axisLine={{ stroke: '#232533' }} />
-                <YAxis stroke="#BDBDBD" tick={{ fill: '#F3F4F6', fontSize: 14 }} axisLine={{ stroke: '#232533' }} />
-                <Tooltip contentStyle={{ background: '#171821', border: '1px solid #232533', color: '#F3F4F6', fontSize: 14 }} />
-                <Line type="monotone" dataKey="closeRate" stroke="#22C55E" strokeWidth={3} dot={{ r: 4, fill: '#22C55E' }} />
-              </LineChart>
+              {isLoading || !chartData ? <div className="text-white flex items-center justify-center h-full">Loading...</div> : (
+                <LineChart data={chartData.closeRateTrend}>
+                  <CartesianGrid stroke="#232533" vertical={false} />
+                  <XAxis dataKey="date" stroke="#BDBDBD" tick={{ fill: '#F3F4F6', fontSize: 14 }} axisLine={{ stroke: '#232533' }} />
+                  <YAxis stroke="#BDBDBD" tick={{ fill: '#F3F4F6', fontSize: 14 }} axisLine={{ stroke: '#232533' }} domain={[0, 100]}/>
+                  <Tooltip contentStyle={{ background: '#171821', border: '1px solid #232533', color: '#F3F4F6', fontSize: 14 }} />
+                  <Line type="monotone" dataKey="closeRate" stroke="#22C55E" strokeWidth={3} dot={{ r: 4, fill: '#22C55E' }} />
+                </LineChart>
+              )}
             </ResponsiveContainer>
           </div>
         </div>
@@ -127,16 +146,20 @@ export const CloserSales: React.FC = () => {
               </tr>
             </thead>
             <tbody className="text-[#F3F4F6]">
-              {mockCloserData.map((closer, idx) => (
-                <tr key={idx} className="border-b border-[#232533] last:border-b-0">
-                  <td className="px-4 py-4 whitespace-nowrap">{closer.name}</td>
-                  <td className="px-4 py-4 whitespace-nowrap">{closer.calls}</td>
-                  <td className="px-4 py-4 whitespace-nowrap">{closer.closes}</td>
-                  <td className="px-4 py-4 whitespace-nowrap">{closer.closeRate}%</td>
-                  <td className="px-4 py-4 whitespace-nowrap">${closer.revenue}</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-green-400 font-semibold">${closer.commission}</td>
-                </tr>
-              ))}
+              {isLoading ? (
+                <tr><td colSpan={6} className="text-center py-4">Loading...</td></tr>
+              ) : (
+                closerMetrics.map((closer, idx) => (
+                  <tr key={idx} className="border-b border-[#232533] last:border-b-0">
+                    <td className="px-4 py-4 whitespace-nowrap">{closer.name}</td>
+                    <td className="px-4 py-4 whitespace-nowrap">{closer.calls}</td>
+                    <td className="px-4 py-4 whitespace-nowrap">{closer.closes}</td>
+                    <td className="px-4 py-4 whitespace-nowrap">{closer.closeRate.toFixed(1)}%</td>
+                    <td className="px-4 py-4 whitespace-nowrap">${closer.revenue.toLocaleString()}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-green-400 font-semibold">${closer.commission.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

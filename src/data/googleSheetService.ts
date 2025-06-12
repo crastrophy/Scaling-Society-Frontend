@@ -71,6 +71,19 @@ export interface CloseRateTrendData {
   closeRate: number;
 }
 
+export interface SDRMetricData {
+  name: string;
+  shows: number;
+  showRate: number;
+  commission: number;
+}
+
+export interface SDRChartData {
+  callsByDay: { day: string; calls: number }[];
+  leadSourceBreakdown: { source: string; value: number }[];
+  showRateTrend: { date: string; showRate: number }[];
+}
+
 export interface CloserChartData {
     revenueByCloser: RevenueByCloserData[];
     dealStatusBreakdown: DealStatusData[];
@@ -476,4 +489,153 @@ export const calculateCloserChartData = (
         dealStatusBreakdown,
         closeRateTrend
     };
-} 
+}
+
+export const calculateSDRMetrics = (
+    data: GoogleSheetData,
+    dateRange?: { from?: Date; to?: Date }
+): SDRMetricData[] => {
+    if (!data || !Array.isArray(data) || !data[0] || !Array.isArray(data[0])) {
+        return [];
+    }
+
+    const closerData: CloserRecord[] = data[0];
+
+    const filteredData = closerData.filter(record => {
+        if (!dateRange || (!dateRange.from && !dateRange.to)) return true;
+        try {
+            const recordDate = new Date(record["Date Call Was Taken"]);
+            if (isNaN(recordDate.getTime())) return false;
+            if (dateRange.from && recordDate < dateRange.from) return false;
+            if (dateRange.to && recordDate > dateRange.to) return false;
+            return true;
+        } catch (e) {
+            return false;
+        }
+    });
+
+    const sdrStats = new Map<string, { callsDue: number, callsTaken: number, totalCashCollected: number }>();
+
+    filteredData.forEach(record => {
+        const sdrName = record["Setter Name"];
+        if (!sdrName || sdrName.trim() === "") return;
+
+        if (!sdrStats.has(sdrName)) {
+            sdrStats.set(sdrName, { callsDue: 0, callsTaken: 0, totalCashCollected: 0 });
+        }
+        const stats = sdrStats.get(sdrName)!;
+
+        const outcome = record["Call Outcome"];
+        const isDue = outcome !== "Cancelled" && outcome !== "Rescheduled";
+        const isTaken = isDue && outcome !== "No Show";
+
+        if (isDue) {
+            stats.callsDue++;
+        }
+
+        if (isTaken) {
+            stats.callsTaken++;
+        }
+
+        const cashCollected = parseFloat(String(record["Cash Collected"] || "0").replace(/[^0-9.-]+/g,"")) || 0;
+        stats.totalCashCollected += cashCollected;
+    });
+
+    const result: SDRMetricData[] = [];
+    sdrStats.forEach((stats, name) => {
+        const showRate = stats.callsDue > 0 ? (stats.callsTaken / stats.callsDue) * 100 : 0;
+        const commission = stats.totalCashCollected * 0.05;
+        result.push({
+            name,
+            shows: stats.callsTaken,
+            showRate,
+            commission
+        });
+    });
+
+    return result;
+};
+
+export const calculateSDRChartData = (
+    data: GoogleSheetData,
+    dateRange?: { from?: Date; to?: Date }
+): SDRChartData => {
+    const initialChartData: SDRChartData = { callsByDay: [], leadSourceBreakdown: [], showRateTrend: [] };
+    if (!data || !Array.isArray(data) || !data[0] || !Array.isArray(data[0])) {
+        return initialChartData;
+    }
+
+    const closerData: CloserRecord[] = data[0];
+
+    const filteredData = closerData.filter(record => {
+        if (!dateRange || (!dateRange.from && !dateRange.to)) return true;
+        try {
+            const recordDate = new Date(record["Date Call Was Taken"]);
+            if (isNaN(recordDate.getTime())) return false;
+            if (dateRange.from && recordDate < dateRange.from) return false;
+            if (dateRange.to && recordDate > dateRange.to) return false;
+            return true;
+        } catch (e) {
+            return false;
+        }
+    });
+
+    // Calls by Day
+    const callsByDayMap = new Map<string, number>();
+    const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    daysOfWeek.forEach(day => callsByDayMap.set(day, 0));
+
+    filteredData.forEach(record => {
+        const outcome = record["Call Outcome"];
+        const isTaken = outcome !== "Cancelled" && outcome !== "Rescheduled" && outcome !== "No Show";
+        if (isTaken) {
+            try {
+                const recordDate = new Date(record["Date Call Was Taken"]);
+                if (!isNaN(recordDate.getTime())) {
+                    const dayOfWeek = daysOfWeek[recordDate.getDay()];
+                    callsByDayMap.set(dayOfWeek, (callsByDayMap.get(dayOfWeek) || 0) + 1);
+                }
+            } catch (e) {}
+        }
+    });
+    const callsByDay = daysOfWeek.map(day => ({ day, calls: callsByDayMap.get(day) || 0 }));
+
+    // Lead Source Breakdown
+    const leadSourceBreakdown = [{ source: 'YouTube', value: 100 }];
+
+    // Show Rate Trend
+    const dailyData = new Map<string, { callsDue: number; callsTaken: number }>();
+    filteredData.forEach(record => {
+        try {
+            const recordDate = new Date(record["Date Call Was Taken"]);
+            if (isNaN(recordDate.getTime())) return;
+            const dateKey = recordDate.toISOString().split('T')[0];
+
+            if (!dailyData.has(dateKey)) {
+                dailyData.set(dateKey, { callsDue: 0, callsTaken: 0 });
+            }
+            const day = dailyData.get(dateKey)!;
+            const outcome = record["Call Outcome"];
+
+            const isDue = outcome !== "Cancelled" && outcome !== "Rescheduled";
+            if (isDue) day.callsDue++;
+
+            const isTaken = isDue && outcome !== "No Show";
+            if (isTaken) day.callsTaken++;
+        } catch(e) {}
+    });
+
+    const showRateTrend = Array.from(dailyData.entries())
+        .map(([date, { callsDue, callsTaken }]) => ({
+            date,
+            showRate: callsDue > 0 ? (callsTaken / callsDue) * 100 : 0,
+        }))
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        .map(item => ({...item, date: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}));
+
+    return {
+        callsByDay,
+        leadSourceBreakdown,
+        showRateTrend
+    };
+}; 

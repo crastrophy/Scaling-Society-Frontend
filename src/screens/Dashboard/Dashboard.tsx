@@ -153,7 +153,7 @@ export const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#21222D] px-0 py-4">
+    <div className="h-full bg-[#21222D] px-0 py-4">
       <div className="max-w-7xl mx-auto space-y-10 px-0">
         {/* Date Picker */}
         <div className="flex justify-start items-center ml-0">

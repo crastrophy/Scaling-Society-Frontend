@@ -58,7 +58,7 @@ export const CloserSales: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#232533] px-0 py-4">
+    <div className="h-full bg-[#232533] px-0 py-4">
       <div className="space-y-10">
         {/* Date Picker */}
         <div className="flex justify-start items-center ml-0 mb-4">

@@ -17,7 +17,6 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         try {
           const idTokenResult = await firebaseUser.getIdTokenResult();
           const claims = idTokenResult.claims;
-          
           if (claims.role === 'internal') {
             setUser(firebaseUser);
             setIsApproved(true);

@@ -30,7 +30,7 @@ export const Invite: React.FC = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-[#21222D]">
+    <div className="flex items-center justify-center h-full">
       <div className="p-8 bg-[#2A2A32] rounded-2xl shadow-lg w-full max-w-sm">
         <h1 className="text-3xl font-bold text-center text-white mb-6">Invite User</h1>
         <p className="text-center text-gray-400 mb-6">Enter the email of a pre-approved user to send them a password-reset link.</p>

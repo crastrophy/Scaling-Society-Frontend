@@ -32,10 +32,10 @@ export function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/sdr-sales" element={<SDRSales />} />
               <Route path="/closer-sales" element={<CloserSales />} />
+              <Route element={<AdminProtectedRoute />}>
+                <Route path="/admin/invite" element={<Invite />} />
+              </Route>
               <Route path="*" element={<Navigate to="/dashboard" />} />
-            </Route>
-            <Route element={<AdminProtectedRoute />}>
-              <Route path="/admin/invite" element={<Invite />} />
             </Route>
           </Route>
         </Routes>

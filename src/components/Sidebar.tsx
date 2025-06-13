@@ -9,11 +9,13 @@ import React, { useState, useRef } from "react";
 import { format } from "date-fns";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/dist/style.css";
+import type { DateRange } from "react-day-picker";
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: Home },
   { to: "/closer-sales", label: "Closer Sales", icon: BarChart },
   { to: "/sdr-sales", label: "SDR Sales", icon: Users },
+  { to: "/leads", label: "Leads", icon: BarChart },
 ];
 
 export function Sidebar() {
@@ -96,7 +98,7 @@ function mapSheetRowsToMetrics(rows: any[]): DashboardMetrics {
 
 export function DateRangePickerButton() {
   const [open, setOpen] = useState(false);
-  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
+  const [dateRange, setDateRange] = useState<DateRange>({ from: undefined, to: undefined });
   const ref = useRef<HTMLDivElement>(null);
 
   // Format the range for display
@@ -123,7 +125,7 @@ export function DateRangePickerButton() {
             mode="range"
             selected={dateRange}
             onSelect={(selected) => {
-              setDateRange(selected || {});
+              setDateRange(selected || { from: undefined, to: undefined });
               if (selected?.from && selected?.to) setOpen(false);
             }}
             numberOfMonths={2}

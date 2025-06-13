@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom
 import { Dashboard } from "./screens/Dashboard/Dashboard";
 import SDRSales from "./screens/SDRSales";
 import CloserSales from "./screens/CloserSales";
+import Leads from "./screens/Leads";
 import { Sidebar } from "./components/Sidebar";
 
 function AppLayout() {
@@ -23,6 +24,7 @@ export function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/sdr-sales" element={<SDRSales />} />
           <Route path="/closer-sales" element={<CloserSales />} />
+          <Route path="/leads" element={<Leads />} />
           <Route path="*" element={<Navigate to="/dashboard" />} />
         </Route>
       </Routes>

@@ -1,21 +1,23 @@
-import React, { useState, useRef } from "react";
+import { useState, useRef } from "react";
 import { Button } from "./ui/button";
 import { Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/dist/style.css";
+import type { DateRange } from "react-day-picker";
+import { Diff } from "lucide-react";
 
 export function DateRangePickerButton({
   value,
   onChange,
   className = "",
 }: {
-  value?: { from?: Date; to?: Date };
-  onChange?: (range: { from?: Date; to?: Date }) => void;
+  value?: DateRange;
+  onChange?: (range: DateRange) => void;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [range, setRange] = useState<{ from?: Date; to?: Date }>(value || {});
+  const [range, setRange] = useState<DateRange>(value || { from: undefined, to: undefined });
   const ref = useRef<HTMLDivElement>(null);
 
   // Format the range for display
@@ -38,12 +40,29 @@ export function DateRangePickerButton({
       </Button>
       {open && (
         <div className="absolute left-0 mt-2 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-4 min-w-[320px]">
+          <thead className="bg-[#232533]">
+            <tr>
+              <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-secondaryText text-left">Date</th>
+              <th className="text-secondaryText">From</th>
+              <th className="text-secondaryText">To</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-800">
+            <tr className="even:bg-[#232533] hover:bg-[#232533]/80 transition">
+              <td className="px-6 py-4 text-sm text-primaryText">
+                {range.from ? format(range.from, "MMM d, yyyy") : "Select date"}
+              </td>
+              <td className="px-6 py-4 text-sm text-primaryText">
+                {range.to ? format(range.to, "MMM d, yyyy") : "Select date"}
+              </td>
+            </tr>
+          </tbody>
           <DayPicker
             mode="range"
             selected={range}
-            onSelect={(selected: { from?: Date; to?: Date } | undefined) => {
-              setRange(selected || {});
-              if (onChange) onChange(selected || {});
+            onSelect={(selected: DateRange | undefined) => {
+              setRange(selected || { from: undefined, to: undefined });
+              if (onChange) onChange(selected || { from: undefined, to: undefined });
               if (selected?.from && selected?.to) setOpen(false);
             }}
             numberOfMonths={1}

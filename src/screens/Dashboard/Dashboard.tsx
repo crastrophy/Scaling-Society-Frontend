@@ -149,7 +149,6 @@ export const Dashboard: React.FC = () => {
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setDateRange((prev) => ({ ...prev, [name]: value }));
-    // Optionally, trigger data refresh here
   };
 
   return (

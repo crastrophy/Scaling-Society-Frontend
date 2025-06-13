@@ -25,6 +25,10 @@ export function Sidebar() {
           <BarChart3 className="mr-4" />
           Closer Sales
         </NavLink>
+        <NavLink to="/leads" className={({ isActive }) => `flex items-center p-3 rounded-lg transition-colors ${isActive ? 'bg-[#3A3F58]' : 'hover:bg-[#3A3F58]'}`}>
+          <Users className="mr-4" />
+          Leads
+        </NavLink>
         {isAdmin && (
           <NavLink to="/admin/invite" className={({ isActive }) => `flex items-center p-3 rounded-lg transition-colors ${isActive ? 'bg-[#3A3F58]' : 'hover:bg-[#3A3F58]'}`}>
             <UserPlus className="mr-4" />

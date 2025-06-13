@@ -173,31 +173,31 @@ export const Dashboard: React.FC = () => {
                 <BarChart2 className="text-[#FBBF24] w-8 h-8 mb-3" />
                 <p className={`${type.stat}`}>{isLoading || !kpiData ? '...' : `$${kpiData.cashCollected.toLocaleString()}`}</p>
                 <p className={`${type.label} mt-1`}>Cash Collected</p>
-                <p className="text-xs mt-1 text-[#FBBF24]">+10% from yesterday</p>
+                {/* <p className="text-xs mt-1 text-[#FBBF24]">+10% from yesterday</p> */}
               </Tile>
               <Tile>
                 <DollarSign className="text-[#67E8F9] w-8 h-8 mb-3" />
                 <p className={`${type.stat}`}>{isLoading || !kpiData ? '...' : `$${kpiData.revenueGenerated.toLocaleString()}`}</p>
                 <p className={`${type.label} mt-1`}>Revenue Generated</p>
-                <p className="text-xs mt-1 text-[#67E8F9]">+8% from yesterday</p>
+                {/* <p className="text-xs mt-1 text-[#67E8F9]">+8% from yesterday</p> */}
               </Tile>
               <Tile>
                 <PhoneIncoming className="text-[#34D399] w-8 h-8 mb-3" />
                 <p className={`${type.stat}`}>{isLoading || !kpiData ? '...' : kpiData.callsDue}</p>
                 <p className={`${type.label} mt-1`}>Calls Due</p>
-                <p className="text-xs mt-1 text-[#34D399]">+8% from yesterday</p>
+                {/* <p className="text-xs mt-1 text-[#34D399]">+8% from yesterday</p> */}
               </Tile>
               <Tile>
                 <Briefcase className="text-[#F9A8D4] w-8 h-8 mb-3" />
                 <p className={`${type.stat}`}>{isLoading || !kpiData ? '...' : kpiData.callsTaken}</p>
                 <p className={`${type.label} mt-1`}>Calls Taken</p>
-                <p className="text-xs mt-1 text-[#F9A8D4]">+2% from yesterday</p>
+                {/* <p className="text-xs mt-1 text-[#F9A8D4]">+2% from yesterday</p> */}
               </Tile>
               <Tile>
                 <UserPlus className="text-[#60A5FA] w-8 h-8 mb-3" />
                 <p className={`${type.stat}`}>{isLoading || !kpiData ? '...' : kpiData.callsClosed}</p>
                 <p className={`${type.label} mt-1`}>Calls Closed</p>
-                <p className="text-xs mt-1 text-[#60A5FA]">+3% from yesterday</p>
+                {/* <p className="text-xs mt-1 text-[#60A5FA]">+3% from yesterday</p> */}
               </Tile>
             </div>
           </Tile>

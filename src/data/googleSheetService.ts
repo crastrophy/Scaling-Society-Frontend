@@ -1,3 +1,5 @@
+import { Lead } from "../components/tables/LeadsTable";
+
 export interface CloserRecord {
   "Call Notes": string;
   "Call Outcome": string;
@@ -12,7 +14,22 @@ export interface CloserRecord {
   "Timestamp": string;
 }
 
-export type GoogleSheetData = [CloserRecord[], unknown[], unknown[]];
+export interface LeadApplicationRecord {
+  "Submitted At": string;
+  "10-20k/m correct?": string;
+  "Breakdown payments?": string;
+  "Money set aside?": string;
+  "Credit score?": string;
+  "First name": string;
+  "Last name": string;
+  "income goals next 90 days": string;
+  "Job income?": string;
+  "Phone number": string;
+  Email: string;
+  [key: string]: any;
+}
+
+export type GoogleSheetData = [CloserRecord[], LeadApplicationRecord[], unknown[]];
 
 export interface KpiData {
     cashCollected: number;
@@ -96,14 +113,79 @@ export interface ChartData {
     showRateTrend: ShowRateTrendData[];
 }
 
+export const calculateApplicantsOverTime = (
+  leadsSheet: LeadApplicationRecord[]
+): { date: string; applicants: number }[] => {
+  if (!leadsSheet) {
+    return [];
+  }
+
+  const applicantsByDate: { [key: string]: number } = {};
+
+  for (const lead of leadsSheet) {
+    const submittedAt = lead["Submitted At"];
+    if (submittedAt && typeof submittedAt === "string") {
+      try {
+        const date = new Date(submittedAt);
+        if (!isNaN(date.getTime())) {
+          const dateString = date.toISOString().split("T")[0];
+          applicantsByDate[dateString] = (applicantsByDate[dateString] || 0) + 1;
+        }
+      } catch (e) {
+        // Ignore invalid date formats
+      }
+    }
+  }
+
+  const dataPoints = Object.entries(applicantsByDate).map(
+    ([dateString, applicants]) => {
+      const date = new Date(dateString);
+      return {
+        date: `${date.getUTCMonth() + 1}/${date.getUTCDate()}`,
+        applicants,
+        rawDate: date,
+      };
+    }
+  );
+
+  return dataPoints
+    .sort((a, b) => a.rawDate.getTime() - b.rawDate.getTime())
+    .map(({ date, applicants }) => ({ date, applicants }));
+};
+
+export const calculateSeriousYesRate = (
+  leadsSheet: LeadApplicationRecord[]
+): { value: string; change: string } => {
+  if (!leadsSheet || leadsSheet.length === 0) {
+    return { value: "0%", change: "" };
+  }
+
+  const seriousApplicantsCount = leadsSheet.filter(
+    (lead) =>
+      lead["10-20k/m correct?"]?.startsWith("Yes") &&
+      lead["Breakdown payments?"]?.startsWith("Yes")
+  ).length;
+
+  const percentage = (seriousApplicantsCount / leadsSheet.length) * 100;
+
+  return {
+    value: `${percentage.toFixed(0)}%`,
+    change: "", // No change calculation logic specified yet
+  };
+};
+
 const revenueKey = "Revenue Generated\nThe total value of the contract (ex: 3000, 4000)\nYour answer";
 
+const API_BASE =
+  import.meta.env.VITE_ENVIRONMENT === 'production'
+    ? import.meta.env.VITE_BACKEND_URL
+    : 'http://localhost:5000';
+
 export const fetchData = async (token: string): Promise<GoogleSheetData> => {
-  const response = await fetch('http://localhost:5000/data', {
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
+  const response = await fetch(`${API_BASE}/data`, {
+    headers: { Authorization: `Bearer ${token}` }
   });
+
   if (!response.ok) {
     throw new Error('Network response was not ok');
   }
@@ -642,4 +724,84 @@ export const calculateSDRChartData = (
         leadSourceBreakdown,
         showRateTrend
     };
-}; 
+};
+
+export const calculateMoneyOnHandDistribution = (
+  leadsSheet: LeadApplicationRecord[]
+): { range: string; count: number }[] => {
+  if (!leadsSheet) {
+    return [];
+  }
+
+  const distribution = new Map<string, number>();
+
+  for (const lead of leadsSheet) {
+    const moneySetAside = lead["Money set aside?"];
+    if (moneySetAside && moneySetAside.trim() !== "") {
+      distribution.set(moneySetAside, (distribution.get(moneySetAside) || 0) + 1);
+    }
+  }
+
+  return Array.from(distribution.entries())
+    .map(([range, count]) => ({ range, count }))
+    .sort((a, b) => {
+      // primary: higher count first
+      if (b.count !== a.count) return b.count - a.count;
+
+      // secondary (tie-breaker): alphabetical range
+      return a.range.localeCompare(b.range);
+    });
+};
+
+export const calculateCreditScoreDistribution = (
+  leadsSheet: LeadApplicationRecord[]
+): { score: string; count: number }[] => {
+  if (!leadsSheet) {
+    return [];
+  }
+
+  const distribution = new Map<string, number>();
+
+  for (const lead of leadsSheet) {
+    const creditScore = lead["Credit score?"];
+    if (creditScore && creditScore.trim() !== "") {
+      distribution.set(creditScore, (distribution.get(creditScore) || 0) + 1);
+    }
+  }
+
+  return Array.from(distribution.entries())
+    .map(([score, count]) => ({ score, count }))
+    .sort((a, b) => {
+      // primary: higher count first
+      if (b.count !== a.count) return b.count - a.count;
+
+      // secondary (tie-breaker): alphabetical score label
+      return a.score.localeCompare(b.score);
+    });
+};
+
+export const calculateLeadsTableData = (
+  leadsSheet: LeadApplicationRecord[]
+): Lead[] => {
+  if (!leadsSheet) {
+    return [];
+  }
+
+  return leadsSheet.map((lead) => {
+    const prospectName = `${lead["First name"] || ""} ${
+      lead["Last name"] || ""
+    }`.trim();
+    return {
+      date: lead["Submitted At"]
+        ? new Date(lead["Submitted At"]).toLocaleDateString()
+        : "N/A",
+      prospect: prospectName || "N/A",
+      incomeGoal: lead["income goals next 90 days"] || "N/A",
+      currentIncome: lead["Job income?"] || "N/A",
+      moneySetAside: lead["Money set aside?"] || "N/A",
+      creditScore: lead["Credit score?"] || "N/A",
+      phone: lead["Phone number"] || "N/A",
+      email: lead["Email"] || "N/A",
+    };
+  });
+};

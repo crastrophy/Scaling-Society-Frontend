@@ -9,6 +9,7 @@ import { Dashboard } from './screens/Dashboard/Dashboard';
 import { CloserSales } from './screens/CloserSales';
 import { SDRSales } from './screens/SDRSales';
 import { Sidebar } from './components/Sidebar';
+import Leads from './screens/Leads';
 
 function AppLayout() {
   return (
@@ -32,6 +33,7 @@ export function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/sdr-sales" element={<SDRSales />} />
               <Route path="/closer-sales" element={<CloserSales />} />
+              <Route path="/leads" element={<Leads />} />
               <Route element={<AdminProtectedRoute />}>
                 <Route path="/admin/invite" element={<Invite />} />
               </Route>
